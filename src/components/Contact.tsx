@@ -1,22 +1,26 @@
-import React, { useState, useEffect } from "react";
-import { Mail, Phone, MapPin, Send, CheckCircle2, Facebook, Instagram, Youtube, Linkedin, Loader2, RefreshCw } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Mail, Phone, MapPin, Send, CheckCircle2, Facebook, Instagram, Youtube, Linkedin, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { COMPANY_INFO, PRODUCTS } from "../lib/constants";
+import BrandLogo from "./BrandLogo";
+import { submitLeadForm, type SubmissionMode } from "../lib/formSubmission";
 
 export default function Contact() {
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
     email: "",
-    city: "Prayagraj", // default preset for regional target
-    productInterest: "Red Clay Bricks", // default selection
+    city: "Prayagraj",
+    productInterest: "Red Clay Bricks",
     message: ""
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [submittedInterest, setSubmittedInterest] = useState(formData.productInterest);
+  const [submissionMode, setSubmissionMode] = useState<SubmissionMode>("submitted");
 
-  // Listen to product enquiry clicks to auto-select option
   useEffect(() => {
     const handleProductSelect = (event: Event) => {
       const customEvent = event as CustomEvent;
@@ -42,34 +46,50 @@ export default function Contact() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorMessage("");
 
-    // Simulate server submission
-    setTimeout(() => {
-      setIsLoading(false);
+    const selectedProduct = formData.productInterest;
+
+    try {
+      const result = await submitLeadForm({
+        formType: "Website Enquiry Form",
+        subject: `New Luxmi website enquiry - ${selectedProduct}`,
+        fields: {
+          "Full Name": formData.fullName,
+          "Phone Number": formData.phone,
+          "Email Address": formData.email,
+          "Delivery City / District": formData.city,
+          "Product of Interest": selectedProduct,
+          "Additional Specifications": formData.message
+        }
+      });
+
+      setSubmissionMode(result);
+      setSubmittedInterest(selectedProduct);
       setIsSuccess(true);
-      // Reset inputs except product interest or default state variables
       setFormData({
         fullName: "",
         phone: "",
         email: "",
         city: "Prayagraj",
-        productInterest: formData.productInterest,
+        productInterest: selectedProduct,
         message: ""
       });
-    }, 1500);
+    } catch {
+      setErrorMessage(`We could not prepare your enquiry for ${COMPANY_INFO.email}. Please try again.`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <section id="contact" className="py-24 bg-stone-100 relative overflow-hidden border-t border-stone-200">
-      {/* Abstract patterns */}
       <div className="absolute top-[30%] -right-[15%] w-[45%] h-[45%] rounded-full bg-brick-dark/5 blur-[120px] pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
-        
-        {/* Section title */}
         <div className="flex flex-col items-center text-center mb-16 max-w-2xl mx-auto">
           <span className="text-brick-light text-xs font-semibold tracking-widest uppercase mb-2">Connect With Us</span>
           <h2 className="text-3xl sm:text-4xl font-display font-bold text-stone-900 leading-tight">
@@ -81,10 +101,7 @@ export default function Contact() {
           </p>
         </div>
 
-        {/* Form & Info Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch" id="contact-core-wrapper">
-          
-          {/* Left: Contact Form Column */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -93,9 +110,20 @@ export default function Contact() {
             className="lg:col-span-7 bg-white rounded-2xl border border-stone-200 p-8 sm:p-10 shadow-xl flex flex-col justify-between"
           >
             <div>
-              <h3 className="text-xl sm:text-2xl font-display font-bold text-stone-900 mb-6">
-                Direct Enquiry Request
-              </h3>
+              <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-display font-bold text-stone-900">
+                    Direct Enquiry Request
+                  </h3>
+                  <p className="text-sm text-stone-500 mt-2">
+                    Every enquiry from this form is routed to {COMPANY_INFO.email}.
+                  </p>
+                </div>
+                <BrandLogo
+                  variant="primary"
+                  className="h-16 sm:h-20 w-auto self-start"
+                />
+              </div>
 
               <AnimatePresence mode="wait">
                 {!isSuccess ? (
@@ -108,8 +136,14 @@ export default function Contact() {
                     exit={{ opacity: 0 }}
                     id="brick-enquiry-form"
                   >
-                    {/* Raw Name & Phone */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 animate-none">
+                    {errorMessage && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                        <span>{errorMessage}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
                           Full Name *
@@ -136,13 +170,12 @@ export default function Contact() {
                           value={formData.phone}
                           onChange={handleChange}
                           className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors"
-                          placeholder="e.g. 98765-43210"
+                          placeholder="e.g. 7607633777"
                           id="input-phone"
                         />
                       </div>
                     </div>
 
-                    {/* Email & City */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
                         <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
@@ -176,7 +209,6 @@ export default function Contact() {
                       </div>
                     </div>
 
-                    {/* Product interest selector drop */}
                     <div>
                       <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
                         Product of Interest
@@ -196,7 +228,6 @@ export default function Contact() {
                       </select>
                     </div>
 
-                    {/* Detailed message requirements */}
                     <div>
                       <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
                         Additional Specifications / Estimated Brick Count *
@@ -213,7 +244,6 @@ export default function Contact() {
                       />
                     </div>
 
-                    {/* Submit cta button */}
                     <button
                       type="submit"
                       disabled={isLoading}
@@ -223,7 +253,7 @@ export default function Contact() {
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Calculating Estimate & Transit Cost...
+                          Sending Enquiry to Email...
                         </>
                       ) : (
                         <>
@@ -249,10 +279,23 @@ export default function Contact() {
                       Enquiry Submitted Successfully!
                     </h4>
                     <p className="text-stone-600 text-sm max-w-md leading-relaxed mb-8">
-                      Thank you for contacting <strong>{COMPANY_INFO.name}</strong>. We have logged your request in <strong>{formData.productInterest}</strong>. Our logistics unit near Jhusi, Prayagraj will draft a custom rate sheet and call you shortly.
+                      {submissionMode === "submitted"
+                        ? (
+                          <>
+                            Thank you for contacting <strong>{COMPANY_INFO.name}</strong>. Your request for <strong>{submittedInterest}</strong> has been sent to <strong>{COMPANY_INFO.email}</strong>. Our logistics unit near Jhusi, Prayagraj will draft a custom rate sheet and call you shortly.
+                          </>
+                        )
+                        : (
+                          <>
+                            We could not auto-send the enquiry, so your mail app was opened with the details addressed to <strong>{COMPANY_INFO.email}</strong>. Please send that email to complete the request for <strong>{submittedInterest}</strong>.
+                          </>
+                        )}
                     </p>
                     <button
-                      onClick={() => setIsSuccess(false)}
+                      onClick={() => {
+                        setIsSuccess(false);
+                        setErrorMessage("");
+                      }}
                       className="flex items-center gap-2 bg-stone-900 hover:bg-stone-850 text-white font-semibold text-xs uppercase tracking-wider py-3 px-6 rounded-lg transition-colors focus:outline-none"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
@@ -264,7 +307,6 @@ export default function Contact() {
             </div>
           </motion.div>
 
-          {/* Right: Contact Information Column */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -272,14 +314,12 @@ export default function Contact() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="lg:col-span-5 flex flex-col justify-between"
           >
-            {/* Quick overview stack */}
             <div className="bg-stone-900 text-white rounded-2xl p-8 sm:p-10 shadow-xl space-y-8 flex-grow">
               <h3 className="text-xl sm:text-2xl font-display font-medium border-b border-stone-800 pb-4">
                 Corporate Dispatch
               </h3>
 
               <div className="space-y-6">
-                {/* Location */}
                 <div className="flex gap-4 items-start">
                   <div className="p-2.5 rounded-lg bg-stone-800 border border-stone-750 text-brick-light flex-shrink-0 mt-1">
                     <MapPin className="w-5 h-5" />
@@ -290,12 +330,11 @@ export default function Contact() {
                       {COMPANY_INFO.address}
                     </p>
                     <span className="text-brick-light text-[11px] font-medium block mt-1.5 font-display">
-                      📍 {COMPANY_INFO.landmark}
+                      ðŸ“ {COMPANY_INFO.landmark}
                     </span>
                   </div>
                 </div>
 
-                {/* Telephone */}
                 <div className="flex gap-4 items-start">
                   <div className="p-2.5 rounded-lg bg-stone-800 border border-stone-750 text-brick-light flex-shrink-0 mt-1">
                     <Phone className="w-5 h-5" />
@@ -311,7 +350,6 @@ export default function Contact() {
                   </div>
                 </div>
 
-                {/* Mail dispatch */}
                 <div className="flex gap-4 items-start">
                   <div className="p-2.5 rounded-lg bg-stone-800 border border-stone-750 text-brick-light flex-shrink-0 mt-1">
                     <Mail className="w-5 h-5" />
@@ -328,7 +366,6 @@ export default function Contact() {
                 </div>
               </div>
 
-              {/* Social Channels in dark widget */}
               <div className="pt-6 border-t border-stone-800">
                 <h4 className="text-stone-400 text-xs font-mono tracking-widest uppercase mb-4">Official Channels</h4>
                 <div className="flex items-center gap-3">
