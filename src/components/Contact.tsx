@@ -1,30 +1,66 @@
 import React, { useEffect, useState } from "react";
-import { Mail, Phone, MapPin, Send, CheckCircle2, Facebook, Instagram, Youtube, Linkedin, Loader2, RefreshCw, AlertCircle } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Send,
+  CheckCircle2,
+  Facebook,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Loader2,
+  RefreshCw,
+  AlertCircle
+} from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { COMPANY_INFO, PRODUCTS } from "../lib/constants";
+import { COMPANY_INFO, getLocalizedCompanyInfo } from "../lib/constants";
+import { useLanguage } from "../lib/language";
 import BrandLogo from "./BrandLogo";
 import { submitLeadForm, type SubmissionMode } from "../lib/formSubmission";
 
+function fillTemplate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce((message, [key, value]) => (
+    message.replaceAll(`{${key}}`, value)
+  ), template);
+}
+
+function getDefaultCity(language: "en" | "hi") {
+  return language === "hi" ? "प्रयागराज" : "Prayagraj";
+}
+
 export default function Contact() {
+  const { language, content, isHindi } = useLanguage();
+  const company = getLocalizedCompanyInfo(language);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
     email: "",
-    city: "Prayagraj",
-    productInterest: "Red Clay Bricks",
+    city: getDefaultCity(language),
+    productInterest: content.products.items[0].id,
     message: ""
   });
-
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [submittedInterest, setSubmittedInterest] = useState(formData.productInterest);
+  const [submittedInterest, setSubmittedInterest] = useState(content.products.items[0].name);
   const [submissionMode, setSubmissionMode] = useState<SubmissionMode>("submitted");
 
   useEffect(() => {
+    const defaultCity = getDefaultCity(language);
+    const otherCity = getDefaultCity(language === "hi" ? "en" : "hi");
+
+    setFormData((prev) => ({
+      ...prev,
+      city: !prev.city || prev.city === otherCity ? defaultCity : prev.city
+    }));
+  }, [language]);
+
+  useEffect(() => {
     const handleProductSelect = (event: Event) => {
-      const customEvent = event as CustomEvent;
-      if (customEvent.detail) {
+      const customEvent = event as CustomEvent<string>;
+
+      if (customEvent.detail && content.products.items.some((prod) => prod.id === customEvent.detail)) {
         setFormData((prev) => ({
           ...prev,
           productInterest: customEvent.detail
@@ -36,13 +72,24 @@ export default function Contact() {
     return () => {
       window.removeEventListener("selectProductEnquiry", handleProductSelect);
     };
-  }, []);
+  }, [content.products.items]);
+
+  useEffect(() => {
+    if (!content.products.items.some((prod) => prod.id === formData.productInterest)) {
+      setFormData((prev) => ({
+        ...prev,
+        productInterest: content.products.items[0].id
+      }));
+    }
+  }, [content.products.items, formData.productInterest]);
+
+  const selectedProduct = content.products.items.find((prod) => prod.id === formData.productInterest) ?? content.products.items[0];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: name === "phone" ? value.replace(/\D/g, "").slice(0, 10) : value
     }));
   };
 
@@ -51,35 +98,39 @@ export default function Contact() {
     setIsLoading(true);
     setErrorMessage("");
 
-    const selectedProduct = formData.productInterest;
-
     try {
       const result = await submitLeadForm({
-        formType: "Website Enquiry Form",
-        subject: `New Luxmi website enquiry - ${selectedProduct}`,
+        formType: content.contact.formTitle,
+        subject: `${content.contact.title} - ${selectedProduct.name}`,
+        replyTo: formData.email,
         fields: {
-          "Full Name": formData.fullName,
-          "Phone Number": formData.phone,
-          "Email Address": formData.email,
-          "Delivery City / District": formData.city,
-          "Product of Interest": selectedProduct,
-          "Additional Specifications": formData.message
+          [content.contact.fields.name]: formData.fullName,
+          [content.contact.fields.phone]: formData.phone,
+          [content.contact.fields.email]: formData.email,
+          [content.contact.fields.city]: formData.city,
+          [content.contact.fields.product]: selectedProduct.name,
+          [content.contact.fields.message]: formData.message
         }
       });
 
       setSubmissionMode(result);
-      setSubmittedInterest(selectedProduct);
+      setSubmittedInterest(selectedProduct.name);
       setIsSuccess(true);
       setFormData({
         fullName: "",
         phone: "",
         email: "",
-        city: "Prayagraj",
-        productInterest: selectedProduct,
+        city: getDefaultCity(language),
+        productInterest: selectedProduct.id,
         message: ""
       });
     } catch {
-      setErrorMessage(`We could not prepare your enquiry for ${COMPANY_INFO.email}. Please try again.`);
+      setErrorMessage(fillTemplate(
+        language === "hi"
+          ? "{email} पर आपकी पूछताछ तैयार नहीं हो सकी। कृपया फिर से प्रयास करें।"
+          : "We could not prepare your enquiry for {email}. Please try again.",
+        { email: COMPANY_INFO.email }
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -91,13 +142,15 @@ export default function Contact() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         <div className="flex flex-col items-center text-center mb-16 max-w-2xl mx-auto">
-          <span className="text-brick-light text-xs font-semibold tracking-widest uppercase mb-2">Connect With Us</span>
+          <span className={`text-brick-light text-xs font-semibold mb-2 ${isHindi ? "" : "tracking-widest uppercase"}`}>
+            {content.contact.eyebrow}
+          </span>
           <h2 className="text-3xl sm:text-4xl font-display font-bold text-stone-900 leading-tight">
-            Initiate Your Material Estimate
+            {content.contact.title}
           </h2>
           <div className="w-16 h-1 bg-brick-primary mt-4 mb-4 rounded-full"></div>
           <p className="text-stone-600 text-sm sm:text-base">
-            Submit your structural requirement below. Our regional team near Jhusi, Prayagraj will calculate custom logistics and formulate a commercial wholesale quotation within 24 hours.
+            {content.contact.description}
           </p>
         </div>
 
@@ -113,10 +166,10 @@ export default function Contact() {
               <div className="flex flex-col gap-5 mb-6 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-xl sm:text-2xl font-display font-bold text-stone-900">
-                    Direct Enquiry Request
+                    {content.contact.formTitle}
                   </h3>
                   <p className="text-sm text-stone-500 mt-2">
-                    Every enquiry from this form is routed to {COMPANY_INFO.email}.
+                    {content.contact.routedNote}
                   </p>
                 </div>
                 <BrandLogo
@@ -145,8 +198,8 @@ export default function Contact() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                          Full Name *
+                        <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                          {content.contact.fields.name} *
                         </label>
                         <input
                           type="text"
@@ -155,22 +208,25 @@ export default function Contact() {
                           value={formData.fullName}
                           onChange={handleChange}
                           className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors"
-                          placeholder="e.g. Alok Tripathi"
+                          placeholder={content.contact.placeholders.name}
                           id="input-fullname"
                         />
                       </div>
                       <div>
-                        <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                          Phone Number *
+                        <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                          {content.contact.fields.phone} *
                         </label>
                         <input
                           type="tel"
                           name="phone"
                           required
+                          inputMode="numeric"
+                          pattern="[0-9]{10}"
+                          maxLength={10}
                           value={formData.phone}
                           onChange={handleChange}
                           className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors"
-                          placeholder="e.g. 7607633777"
+                          placeholder={content.contact.placeholders.phone}
                           id="input-phone"
                         />
                       </div>
@@ -178,8 +234,8 @@ export default function Contact() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                          Email Address *
+                        <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                          {content.contact.fields.email} *
                         </label>
                         <input
                           type="email"
@@ -188,13 +244,13 @@ export default function Contact() {
                           value={formData.email}
                           onChange={handleChange}
                           className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors"
-                          placeholder="e.g. alok@gmail.com"
+                          placeholder={content.contact.placeholders.email}
                           id="input-email"
                         />
                       </div>
                       <div>
-                        <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                          Delivery City / District *
+                        <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                          {content.contact.fields.city} *
                         </label>
                         <input
                           type="text"
@@ -203,15 +259,15 @@ export default function Contact() {
                           value={formData.city}
                           onChange={handleChange}
                           className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors"
-                          placeholder="e.g. Prayagraj"
+                          placeholder={content.contact.placeholders.city}
                           id="input-city"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                        Product of Interest
+                      <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                        {content.contact.fields.product}
                       </label>
                       <select
                         name="productInterest"
@@ -220,8 +276,8 @@ export default function Contact() {
                         className="w-full px-4 py-3 bg-white rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors cursor-pointer"
                         id="input-productInterest"
                       >
-                        {PRODUCTS.map((prod) => (
-                          <option key={prod.id} value={prod.name}>
+                        {content.products.items.map((prod) => (
+                          <option key={prod.id} value={prod.id}>
                             {prod.name}
                           </option>
                         ))}
@@ -229,8 +285,8 @@ export default function Contact() {
                     </div>
 
                     <div>
-                      <label className="block text-stone-600 text-xs font-semibold uppercase tracking-wider mb-2">
-                        Additional Specifications / Estimated Brick Count *
+                      <label className={`block text-stone-600 text-xs font-semibold mb-2 ${isHindi ? "" : "uppercase tracking-wider"}`}>
+                        {content.contact.fields.message} *
                       </label>
                       <textarea
                         name="message"
@@ -239,7 +295,7 @@ export default function Contact() {
                         value={formData.message}
                         onChange={handleChange}
                         className="w-full px-4 py-3 rounded-lg border border-stone-250 text-stone-800 text-sm focus:border-brick-primary focus:ring-1 focus:ring-brick-primary focus:outline-none transition-colors placeholder:text-stone-400"
-                        placeholder="Please indicate total quantity requested (e.g. 15,000 bricks required), construction layout, and target delivery schedule."
+                        placeholder={content.contact.placeholders.message}
                         id="input-message"
                       />
                     </div>
@@ -247,17 +303,19 @@ export default function Contact() {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="w-full group py-4 px-6 rounded-lg bg-brick-primary hover:bg-brick-light disabled:bg-stone-400 text-white font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brick-primary"
+                      className={`w-full group py-4 px-6 rounded-lg bg-brick-primary hover:bg-brick-light disabled:bg-stone-400 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brick-primary ${
+                        isHindi ? "" : "uppercase tracking-widest"
+                      }`}
                       id="submit-enquiry-btn"
                     >
                       {isLoading ? (
                         <>
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          Sending Enquiry to Email...
+                          {content.contact.loadingText}
                         </>
                       ) : (
                         <>
-                          Submit Enquiry Request
+                          {content.contact.submitCta}
                           <Send className="w-3.5 h-3.5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                       )}
@@ -276,30 +334,31 @@ export default function Contact() {
                       <CheckCircle2 className="w-10 h-10" />
                     </div>
                     <h4 className="text-xl sm:text-2xl font-display font-bold text-stone-900 mb-3">
-                      Enquiry Submitted Successfully!
+                      {content.contact.successTitle}
                     </h4>
                     <p className="text-stone-600 text-sm max-w-md leading-relaxed mb-8">
                       {submissionMode === "submitted"
-                        ? (
-                          <>
-                            Thank you for contacting <strong>{COMPANY_INFO.name}</strong>. Your request for <strong>{submittedInterest}</strong> has been sent to <strong>{COMPANY_INFO.email}</strong>. Our logistics unit near Jhusi, Prayagraj will draft a custom rate sheet and call you shortly.
-                          </>
-                        )
-                        : (
-                          <>
-                            We could not auto-send the enquiry, so your mail app was opened with the details addressed to <strong>{COMPANY_INFO.email}</strong>. Please send that email to complete the request for <strong>{submittedInterest}</strong>.
-                          </>
-                        )}
+                        ? fillTemplate(content.contact.successSubmitted, {
+                            product: submittedInterest,
+                            email: COMPANY_INFO.email
+                          })
+                        : fillTemplate(content.contact.successFallback, {
+                            product: submittedInterest,
+                            email: COMPANY_INFO.email
+                          })}
                     </p>
                     <button
+                      type="button"
                       onClick={() => {
                         setIsSuccess(false);
                         setErrorMessage("");
                       }}
-                      className="flex items-center gap-2 bg-stone-900 hover:bg-stone-850 text-white font-semibold text-xs uppercase tracking-wider py-3 px-6 rounded-lg transition-colors focus:outline-none"
+                      className={`flex items-center gap-2 bg-stone-900 hover:bg-stone-850 text-white font-semibold text-xs py-3 px-6 rounded-lg transition-colors focus:outline-none ${
+                        isHindi ? "" : "uppercase tracking-wider"
+                      }`}
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
-                      Submit Another Query
+                      {content.contact.resetCta}
                     </button>
                   </motion.div>
                 )}
@@ -316,7 +375,7 @@ export default function Contact() {
           >
             <div className="bg-stone-900 text-white rounded-2xl p-8 sm:p-10 shadow-xl space-y-8 flex-grow">
               <h3 className="text-xl sm:text-2xl font-display font-medium border-b border-stone-800 pb-4">
-                Corporate Dispatch
+                {content.contact.sideTitle}
               </h3>
 
               <div className="space-y-6">
@@ -325,12 +384,14 @@ export default function Contact() {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-stone-500 text-[10px] font-mono tracking-widest uppercase">BHATTA YARD hq</span>
+                    <span className={`text-stone-500 text-[10px] ${isHindi ? "" : "font-mono uppercase tracking-widest"}`}>
+                      {content.contact.yardLabel}
+                    </span>
                     <p className="text-stone-300 text-sm mt-1 leading-relaxed">
-                      {COMPANY_INFO.address}
+                      {company.address}
                     </p>
                     <span className="text-brick-light text-[11px] font-medium block mt-1.5 font-display">
-                      ðŸ“ {COMPANY_INFO.landmark}
+                      {company.landmark}
                     </span>
                   </div>
                 </div>
@@ -340,7 +401,9 @@ export default function Contact() {
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-stone-500 text-[10px] font-mono tracking-widest uppercase">DIRECT HOTLINE</span>
+                    <span className={`text-stone-500 text-[10px] ${isHindi ? "" : "font-mono uppercase tracking-widest"}`}>
+                      {content.contact.hotlineLabel}
+                    </span>
                     <a
                       href={`tel:${COMPANY_INFO.phone}`}
                       className="block text-white text-base sm:text-lg font-bold mt-1 hover:text-brick-light transition-colors"
@@ -355,7 +418,9 @@ export default function Contact() {
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-stone-500 text-[10px] font-mono tracking-widest uppercase">RFQ SUBMISSIONS</span>
+                    <span className={`text-stone-500 text-[10px] ${isHindi ? "" : "font-mono uppercase tracking-widest"}`}>
+                      {content.contact.emailDeskLabel}
+                    </span>
                     <a
                       href={`mailto:${COMPANY_INFO.email}`}
                       className="block text-stone-300 text-sm mt-1 hover:text-white hover:underline transition-colors truncate"
@@ -367,14 +432,16 @@ export default function Contact() {
               </div>
 
               <div className="pt-6 border-t border-stone-800">
-                <h4 className="text-stone-400 text-xs font-mono tracking-widest uppercase mb-4">Official Channels</h4>
+                <h4 className={`text-stone-400 text-xs mb-4 ${isHindi ? "font-medium" : "font-mono uppercase tracking-widest"}`}>
+                  {content.contact.channelsLabel}
+                </h4>
                 <div className="flex items-center gap-3">
                   <a
                     href={COMPANY_INFO.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-stone-800 hover:bg-brick-primary text-stone-300 hover:text-white rounded-lg border border-stone-750 hover:border-brick-primary transition-all duration-200"
-                    aria-label="Facebook Link"
+                    aria-label="Facebook"
                   >
                     <Facebook className="w-4 h-4" />
                   </a>
@@ -383,7 +450,7 @@ export default function Contact() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-stone-800 hover:bg-brick-primary text-stone-300 hover:text-white rounded-lg border border-stone-750 hover:border-brick-primary transition-all duration-200"
-                    aria-label="Instagram Link"
+                    aria-label="Instagram"
                   >
                     <Instagram className="w-4 h-4" />
                   </a>
@@ -392,7 +459,7 @@ export default function Contact() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-stone-800 hover:bg-brick-primary text-stone-300 hover:text-white rounded-lg border border-stone-750 hover:border-brick-primary transition-all duration-200"
-                    aria-label="YouTube Link"
+                    aria-label="YouTube"
                   >
                     <Youtube className="w-4 h-4" />
                   </a>
@@ -401,7 +468,7 @@ export default function Contact() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-stone-800 hover:bg-brick-primary text-stone-300 hover:text-white rounded-lg border border-stone-750 hover:border-brick-primary transition-all duration-200"
-                    aria-label="LinkedIn Link"
+                    aria-label="LinkedIn"
                   >
                     <Linkedin className="w-4 h-4" />
                   </a>

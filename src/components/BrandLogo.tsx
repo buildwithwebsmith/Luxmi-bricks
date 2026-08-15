@@ -22,7 +22,7 @@ interface BrandLogoProps {
 
 export default function BrandLogo({
   variant = "horizontalDark",
-  alt = "LUXMI BRICK FIELD logo",
+  alt = "Luxmi Brick Field logo",
   className
 }: BrandLogoProps) {
   return (

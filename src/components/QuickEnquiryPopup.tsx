@@ -1,15 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { X, Send, MessageCircleCode, CheckCircle, AlertCircle, Mail, Loader2 } from "lucide-react";
-import { COMPANY_INFO, PRODUCTS } from "../lib/constants";
+import { COMPANY_INFO } from "../lib/constants";
+import { useLanguage } from "../lib/language";
 import { submitLeadForm, type SubmissionMode } from "../lib/formSubmission";
 
+function fillTemplate(template: string, values: Record<string, string>) {
+  return Object.entries(values).reduce((message, [key, value]) => (
+    message.replaceAll(`{${key}}`, value)
+  ), template);
+}
+
 export default function QuickEnquiryPopup() {
+  const { language, content, isHindi } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [brickType, setBrickType] = useState(PRODUCTS[0].name);
-  const [quantity, setQuantity] = useState("5000");
+  const [productId, setProductId] = useState(content.products.items[0].id);
+  const [quantityIndex, setQuantityIndex] = useState(2);
   const [validationError, setValidationError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -43,25 +51,39 @@ export default function QuickEnquiryPopup() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!content.products.items.some((prod) => prod.id === productId)) {
+      setProductId(content.products.items[0].id);
+    }
+  }, [content.products.items, productId]);
+
+  const selectedProduct = content.products.items.find((prod) => prod.id === productId) ?? content.products.items[0];
+  const quantityOptions = content.quickEnquiry.quantityOptions;
+  const selectedQuantity = quantityOptions[quantityIndex] ?? quantityOptions[0];
+
+  const whatsappMessage = useMemo(() => (
+    language === "hi"
+      ? `नमस्ते, मुझे ${selectedProduct.name} के लिए ${selectedQuantity} का कोटेशन चाहिए। नाम: ${name || "ग्राहक"}, फोन: ${phone || "अभी साझा नहीं किया"}`
+      : `Hello, I need a quote for ${selectedQuantity} of ${selectedProduct.name}. Name: ${name || "Customer"}, phone: ${phone || "Not shared yet"}.`
+  ), [language, name, phone, selectedProduct.name, selectedQuantity]);
+
+  const whatsappQuoteLink = `${COMPANY_INFO.whatsappLink}?text=${encodeURIComponent(whatsappMessage)}`;
+
   const handleClose = () => {
     setIsOpen(false);
     localStorage.setItem("luxmi_whatsapp_popup_dismissed", Date.now().toString());
   };
 
-  const whatsappQuoteLink = `${COMPANY_INFO.whatsappLink}?text=${encodeURIComponent(
-    `Hi, I need a quote for ${brickType} - ${quantity} bricks. Name: ${name || "Customer"}, Phone: ${phone || "Not shared yet"}`
-  )}`;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
-      setValidationError("Please input your Name");
+      setValidationError(content.quickEnquiry.nameError);
       return;
     }
 
-    if (!phone.trim() || phone.length < 10) {
-      setValidationError("Please input a valid 10-digit Phone identifier");
+    if (!/^\d{10}$/.test(phone.trim())) {
+      setValidationError(content.quickEnquiry.phoneError);
       return;
     }
 
@@ -70,21 +92,27 @@ export default function QuickEnquiryPopup() {
 
     try {
       const result = await submitLeadForm({
-        formType: "Quick Quote Popup",
-        subject: `Quick quote request - ${brickType}`,
+        formType: content.quickEnquiry.title,
+        subject: `${content.quickEnquiry.title} - ${selectedProduct.name}`,
+        replyTo: email,
         fields: {
-          "Customer Name": name,
-          "WhatsApp Number": phone,
-          "Email Address": email,
-          "Brick Type": brickType,
-          "Quantity Range": quantity
+          [content.quickEnquiry.fields.name]: name,
+          [content.quickEnquiry.fields.phone]: phone,
+          [content.quickEnquiry.fields.email]: email,
+          [content.quickEnquiry.fields.product]: selectedProduct.name,
+          [content.quickEnquiry.fields.quantity]: selectedQuantity
         }
       });
 
       setSubmissionMode(result);
       setIsSuccess(true);
     } catch {
-      setValidationError(`We could not prepare the quote request for ${COMPANY_INFO.email}. Please try again.`);
+      setValidationError(fillTemplate(
+        language === "hi"
+          ? "{email} के लिए कोटेशन अनुरोध तैयार नहीं हो सका। कृपया फिर से प्रयास करें।"
+          : "We could not prepare the quote request for {email}. Please try again.",
+        { email: COMPANY_INFO.email }
+      ));
     } finally {
       setIsLoading(false);
     }
@@ -107,19 +135,20 @@ export default function QuickEnquiryPopup() {
               <MessageCircleCode className="w-6 h-6 text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-display font-bold text-white tracking-wide">
-                Get a Quick Quote
+              <h3 className="text-base sm:text-lg font-display font-bold text-white">
+                {content.quickEnquiry.title}
               </h3>
               <p className="text-stone-300 text-xs mt-0.5">
-                Sent to our email desk. For urgent discussion, start a WhatsApp chat too.
+                {content.quickEnquiry.subtitle}
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={handleClose}
             className="absolute top-4 right-4 z-10 p-1.5 rounded-full hover:bg-white/10 text-stone-400 hover:text-white transition-colors"
-            aria-label="Close quote modal"
+            aria-label={content.quickEnquiry.closeCta}
           >
             <X className="w-4 h-4" />
           </button>
@@ -135,13 +164,13 @@ export default function QuickEnquiryPopup() {
             )}
 
             <div>
-              <label className="block text-stone-400 text-xs font-mono tracking-wider uppercase mb-1.5">
-                Your Name
+              <label className={`block text-stone-400 text-xs mb-1.5 ${isHindi ? "font-medium" : "font-mono tracking-wider uppercase"}`}>
+                {content.quickEnquiry.fields.name}
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Shailesh Tripathi"
+                placeholder={content.quickEnquiry.placeholders.name}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full bg-stone-950 border border-stone-800 px-3.5 py-2.5 rounded-lg text-sm text-white focus:border-brick-light focus:outline-none focus:ring-1 focus:ring-brick-light/20"
@@ -149,32 +178,36 @@ export default function QuickEnquiryPopup() {
             </div>
 
             <div>
-              <label className="block text-stone-400 text-xs font-mono tracking-wider uppercase mb-1.5">
-                WhatsApp Mobile Number
+              <label className={`block text-stone-400 text-xs mb-1.5 ${isHindi ? "font-medium" : "font-mono tracking-wider uppercase"}`}>
+                {content.quickEnquiry.fields.phone}
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 text-sm font-mono leading-none">+91</span>
+                <span className={`absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500 text-sm leading-none ${isHindi ? "" : "font-mono"}`}>
+                  +91
+                </span>
                 <input
                   type="tel"
                   required
+                  inputMode="numeric"
                   pattern="[0-9]{10}"
-                  placeholder="7607633777"
+                  maxLength={10}
+                  placeholder={content.quickEnquiry.placeholders.phone}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                  className="w-full bg-stone-950 border border-stone-800 pl-12 pr-3.5 py-2.5 rounded-lg text-sm text-white focus:border-brick-light focus:outline-none focus:ring-1 focus:ring-brick-light/20 font-mono"
+                  className="w-full bg-stone-950 border border-stone-800 pl-12 pr-3.5 py-2.5 rounded-lg text-sm text-white focus:border-brick-light focus:outline-none focus:ring-1 focus:ring-brick-light/20"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-stone-400 text-xs font-mono tracking-wider uppercase mb-1.5">
-                Email Address (Optional)
+              <label className={`block text-stone-400 text-xs mb-1.5 ${isHindi ? "font-medium" : "font-mono tracking-wider uppercase"}`}>
+                {content.quickEnquiry.fields.email}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500" />
                 <input
                   type="email"
-                  placeholder="yourname@email.com"
+                  placeholder={content.quickEnquiry.placeholders.email}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-stone-950 border border-stone-800 pl-11 pr-3.5 py-2.5 rounded-lg text-sm text-white focus:border-brick-light focus:outline-none focus:ring-1 focus:ring-brick-light/20"
@@ -184,16 +217,16 @@ export default function QuickEnquiryPopup() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-stone-400 text-xs font-mono tracking-wider uppercase mb-1.5">
-                  Brick Class
+                <label className={`block text-stone-400 text-xs mb-1.5 ${isHindi ? "font-medium" : "font-mono tracking-wider uppercase"}`}>
+                  {content.quickEnquiry.fields.product}
                 </label>
                 <select
-                  value={brickType}
-                  onChange={(e) => setBrickType(e.target.value)}
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
                   className="w-full bg-stone-950 border border-stone-800 px-3 py-2.5 rounded-lg text-xs text-white focus:border-brick-light focus:outline-none"
                 >
-                  {PRODUCTS.map((prod) => (
-                    <option key={prod.id} value={prod.name}>
+                  {content.products.items.map((prod) => (
+                    <option key={prod.id} value={prod.id}>
                       {prod.name}
                     </option>
                   ))}
@@ -201,19 +234,19 @@ export default function QuickEnquiryPopup() {
               </div>
 
               <div>
-                <label className="block text-stone-400 text-xs font-mono tracking-wider uppercase mb-1.5">
-                  Quantity Pcs
+                <label className={`block text-stone-400 text-xs mb-1.5 ${isHindi ? "font-medium" : "font-mono tracking-wider uppercase"}`}>
+                  {content.quickEnquiry.fields.quantity}
                 </label>
                 <select
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-800 px-3 py-2.5 rounded-lg text-xs text-white focus:border-brick-light focus:outline-none font-mono"
+                  value={String(quantityIndex)}
+                  onChange={(e) => setQuantityIndex(Number(e.target.value))}
+                  className="w-full bg-stone-950 border border-stone-800 px-3 py-2.5 rounded-lg text-xs text-white focus:border-brick-light focus:outline-none"
                 >
-                  <option value="Less than 1000">&lt; 1,000</option>
-                  <option value="1000 - 5000">1,000 - 5,000</option>
-                  <option value="5000 - 10000">5,000 - 10,000</option>
-                  <option value="10000 - 25000">10,000 - 25,000</option>
-                  <option value="25000+">25,000+ (Bulk)</option>
+                  {quantityOptions.map((option, index) => (
+                    <option key={option} value={index}>
+                      {option}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -221,7 +254,7 @@ export default function QuickEnquiryPopup() {
             <div className="p-3 bg-stone-950/50 border border-stone-850 rounded-lg text-[10px] text-stone-500 flex items-start gap-2">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
               <p>
-                This quick quote goes to {COMPANY_INFO.email}. If you want an instant conversation, you can also start a WhatsApp chat on {COMPANY_INFO.whatsapp}.
+                {content.quickEnquiry.note}
               </p>
             </div>
 
@@ -230,26 +263,30 @@ export default function QuickEnquiryPopup() {
               target="_blank"
               rel="noopener noreferrer"
               referrerPolicy="no-referrer"
-              className="flex items-center justify-center gap-2 w-full border border-emerald-500/30 text-emerald-300 hover:text-white hover:bg-emerald-600/10 font-bold text-xs uppercase tracking-widest py-3 px-5 rounded-lg transition-colors"
+              className={`flex items-center justify-center gap-2 w-full border border-emerald-500/30 text-emerald-300 hover:text-white hover:bg-emerald-600/10 font-bold text-xs py-3 px-5 rounded-lg transition-colors ${
+                isHindi ? "" : "tracking-widest uppercase"
+              }`}
             >
-              Start Chat on WhatsApp
+              {content.quickEnquiry.whatsappCta}
             </a>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800/60 text-white font-bold text-xs uppercase tracking-widest py-3 px-5 rounded-lg transition-colors group mt-2 shadow-lg hover:shadow-emerald-900/10"
+              className={`w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800/60 text-white font-bold text-xs py-3 px-5 rounded-lg transition-colors group mt-2 shadow-lg hover:shadow-emerald-900/10 ${
+                isHindi ? "" : "tracking-widest uppercase"
+              }`}
               id="modal-whatsapp-send"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Sending Quote Request...
+                  {content.quickEnquiry.loadingText}
                 </>
               ) : (
                 <>
                   <Send className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                  Send Quote Request
+                  {content.quickEnquiry.submitCta}
                 </>
               )}
             </button>
@@ -261,12 +298,18 @@ export default function QuickEnquiryPopup() {
                 <CheckCircle className="w-6 h-6" />
               </div>
               <h4 className="text-lg font-display font-bold text-white">
-                Quote Request Ready
+                {content.quickEnquiry.successTitle}
               </h4>
               <p className="text-sm text-stone-300 mt-2 leading-relaxed">
                 {submissionMode === "submitted"
-                  ? `Your quick quote request for ${brickType} has been sent to ${COMPANY_INFO.email}.`
-                  : `We could not auto-send it, so your mail app was opened with the request addressed to ${COMPANY_INFO.email}.`}
+                  ? fillTemplate(content.quickEnquiry.successSubmitted, {
+                      product: selectedProduct.name,
+                      email: COMPANY_INFO.email
+                    })
+                  : fillTemplate(content.quickEnquiry.successFallback, {
+                      product: selectedProduct.name,
+                      email: COMPANY_INFO.email
+                    })}
               </p>
             </div>
 
@@ -275,15 +318,20 @@ export default function QuickEnquiryPopup() {
               target="_blank"
               rel="noopener noreferrer"
               referrerPolicy="no-referrer"
-              className="flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-widest py-3 px-5 rounded-lg transition-colors"
+              className={`flex items-center justify-center gap-2 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 px-5 rounded-lg transition-colors ${
+                isHindi ? "" : "tracking-widest uppercase"
+              }`}
             >
-              Start WhatsApp Chat
+              {content.quickEnquiry.whatsappCta}
             </a>
             <button
+              type="button"
               onClick={handleClose}
-              className="w-full border border-stone-700 hover:border-stone-500 text-stone-200 hover:text-white font-bold text-xs uppercase tracking-widest py-3 px-5 rounded-lg transition-colors"
+              className={`w-full border border-stone-700 hover:border-stone-500 text-stone-200 hover:text-white font-bold text-xs py-3 px-5 rounded-lg transition-colors ${
+                isHindi ? "" : "tracking-widest uppercase"
+              }`}
             >
-              Close
+              {content.quickEnquiry.closeCta}
             </button>
           </div>
         )}

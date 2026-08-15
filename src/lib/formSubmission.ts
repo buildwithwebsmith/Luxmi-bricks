@@ -6,27 +6,43 @@ interface LeadSubmissionPayload {
   formType: string;
   subject: string;
   fields: Record<string, string>;
+  replyTo?: string;
 }
 
 const FORM_ENDPOINT = `https://formsubmit.co/ajax/${COMPANY_INFO.email}`;
 
+const isHindiDocument = () =>
+  typeof document !== "undefined" && document.documentElement.lang.startsWith("hi");
+
 const formatTimestamp = () =>
-  new Intl.DateTimeFormat("en-IN", {
+  new Intl.DateTimeFormat(isHindiDocument() ? "hi-IN" : "en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: "Asia/Kolkata"
   }).format(new Date());
 
 const toMultilineBody = (formType: string, fields: Record<string, string>) => {
+  const labels = isHindiDocument()
+    ? {
+        formType: "फॉर्म प्रकार",
+        submittedAt: "भेजे जाने का समय",
+        sourcePage: "सोर्स पेज"
+      }
+    : {
+        formType: "Form Type",
+        submittedAt: "Submitted At",
+        sourcePage: "Source Page"
+      };
+
   const lines = Object.entries(fields)
     .filter(([, value]) => value.trim())
     .map(([label, value]) => `${label}: ${value}`);
 
   return [
-    `Form Type: ${formType}`,
+    `${labels.formType}: ${formType}`,
     ...lines,
-    `Submitted At: ${formatTimestamp()}`,
-    `Source Page: ${window.location.href}`
+    `${labels.submittedAt}: ${formatTimestamp()}`,
+    `${labels.sourcePage}: ${window.location.href}`
   ].join("\n");
 };
 
@@ -55,6 +71,7 @@ export async function submitLeadForm(payload: LeadSubmissionPayload): Promise<Su
         _subject: payload.subject,
         _template: "table",
         _captcha: "false",
+        _replyto: payload.replyTo?.trim() || undefined,
         formType: payload.formType,
         submittedAt: formatTimestamp(),
         sourcePage: window.location.href,

@@ -6,29 +6,46 @@
   --color-brick-light: #E07B4A;
   --color-cream: #FAF3E0;
   --color-charcoal: #2C2C2C;
-  
+
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --font-display: "Playfair Display", Georgia, serif;
+  --font-hi-sans: "Hind", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
+  --font-hi-display: "Mukta", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
 }
 
-/* Base custom styles and smooth scrolling */
 @layer base {
   html {
     scroll-behavior: smooth;
   }
+
+  html[data-language="hi"] {
+    --font-sans: var(--font-hi-sans);
+    --font-display: var(--font-hi-display);
+  }
+
+  html[data-language="hi"] body {
+    text-rendering: optimizeLegibility;
+  }
+
+  html[data-language="hi"] * {
+    letter-spacing: 0 !important;
+    word-spacing: normal !important;
+  }
+
+  html[data-language="hi"] .font-mono {
+    font-family: var(--font-hi-sans) !important;
+  }
 }
 
-/* Infinite marquee or animations optionally */
 .brick-grid-overlay {
-  background-image: 
+  background-image:
     linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-/* Subtle repeating brick texture */
 .brick-texture-overlay {
-  background-image: 
+  background-image:
     linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
     linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size: 40px 20px;

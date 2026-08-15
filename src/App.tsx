@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import AnnouncementBar from "./components/AnnouncementBar";
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
@@ -19,95 +19,153 @@ import Footer from "./components/Footer";
 import QuickEnquiryPopup from "./components/QuickEnquiryPopup";
 import FloatingWhatsApp from "./components/FloatingWhatsApp";
 import BackToTop from "./components/BackToTop";
+import { COMPANY_INFO, getLocalizedCompanyInfo } from "./lib/constants";
+import { useLanguage } from "./lib/language";
+
+function upsertMeta(selector: string, attributes: Record<string, string>) {
+  let element = document.head.querySelector(selector) as HTMLMetaElement | null;
+
+  if (!element) {
+    element = document.createElement("meta");
+    document.head.appendChild(element);
+  }
+
+  Object.entries(attributes).forEach(([key, value]) => {
+    element?.setAttribute(key, value);
+  });
+}
 
 export default function App() {
-  const localBusinessSchema = {
+  const { language, content } = useLanguage();
+  const localizedCompany = getLocalizedCompanyInfo(language);
+  const isHindi = language === "hi";
+
+  useEffect(() => {
+    document.title = content.meta.title;
+
+    upsertMeta('meta[name="description"]', {
+      name: "description",
+      content: content.meta.description
+    });
+
+    upsertMeta('meta[name="keywords"]', {
+      name: "keywords",
+      content: content.meta.keywords
+    });
+
+    upsertMeta('meta[name="robots"]', {
+      name: "robots",
+      content: "index, follow"
+    });
+
+    upsertMeta('meta[property="og:title"]', {
+      property: "og:title",
+      content: content.meta.ogTitle
+    });
+
+    upsertMeta('meta[property="og:description"]', {
+      property: "og:description",
+      content: content.meta.ogDescription
+    });
+
+    upsertMeta('meta[property="og:site_name"]', {
+      property: "og:site_name",
+      content: COMPANY_INFO.brandName
+    });
+
+    upsertMeta('meta[property="og:type"]', {
+      property: "og:type",
+      content: "website"
+    });
+
+    upsertMeta('meta[property="og:locale"]', {
+      property: "og:locale",
+      content: content.meta.locale
+    });
+
+    upsertMeta('meta[name="twitter:card"]', {
+      name: "twitter:card",
+      content: "summary_large_image"
+    });
+
+    upsertMeta('meta[name="twitter:title"]', {
+      name: "twitter:title",
+      content: content.meta.ogTitle
+    });
+
+    upsertMeta('meta[name="twitter:description"]', {
+      name: "twitter:description",
+      content: content.meta.ogDescription
+    });
+
+    upsertMeta('meta[name="theme-color"]', {
+      name: "theme-color",
+      content: "#8B1A1A"
+    });
+  }, [content.meta]);
+
+  const localBusinessSchema = useMemo(() => ({
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
-    "name": "LUXMI BRICK FIELD",
-    "address": {
+    name: content.seoLabels.companySchemaName,
+    alternateName: COMPANY_INFO.brandNameHi,
+    description: content.meta.description,
+    telephone: COMPANY_INFO.phone,
+    email: COMPANY_INFO.email,
+    address: {
       "@type": "PostalAddress",
-      "streetAddress": "Banaras Road, Garapur, Jhusi",
-      "addressLocality": "Prayagraj",
-      "addressRegion": "Uttar Pradesh",
-      "postalCode": "211013",
-      "addressCountry": "IN"
+      streetAddress: localizedCompany.address,
+      addressLocality: isHindi ? "प्रयागराज" : "Prayagraj",
+      addressRegion: isHindi ? "उत्तर प्रदेश" : "Uttar Pradesh",
+      postalCode: "211013",
+      addressCountry: "IN"
     },
-    "geo": {
+    geo: {
       "@type": "GeoCoordinates",
-      "latitude": 25.4358,
-      "longitude": 81.9621
+      latitude: COMPANY_INFO.latitude,
+      longitude: COMPANY_INFO.longitude
     },
-    "openingHours": "Mo-Sa 08:00-18:00",
-    "priceRange": "₹₹"
-  };
+    openingHours: "Mo-Sa 08:00-18:00",
+    priceRange: content.seoLabels.priceRange,
+    areaServed: isHindi ? "प्रयागराज और उत्तर प्रदेश" : "Prayagraj and Uttar Pradesh",
+    keywords: content.meta.keywords,
+    sameAs: [
+      COMPANY_INFO.facebook,
+      COMPANY_INFO.instagram,
+      COMPANY_INFO.youtube,
+      COMPANY_INFO.linkedin
+    ]
+  }), [content, isHindi, localizedCompany.address]);
 
   return (
     <div className="relative min-h-screen bg-stone-50 text-stone-850 selection:bg-brick-primary selection:text-white" id="app-root-container">
-      {/* Local Business Schema Markup for SEO Validation */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
 
-      {/* Sticky dismissible summer bulk offer banner */}
       <AnnouncementBar />
-
-      {/* Dynamic Navigation with top progress tracking bar */}
       <Navbar />
 
-      {/* Main Single Scrollable Body */}
       <main>
-        {/* Hero Banner Section */}
         <Hero />
-
-        {/* Auto scrolling trust badges marquee */}
         <TrustStrip />
-
-        {/* Heritage & Regional Sourcing Narrative */}
         <About />
-
-        {/* Product Catalogue Grid */}
         <Products />
-
-        {/* Interactive Brick Type technical parameter matrix */}
         <BrickComparison />
-
-        {/* Interactive material demand, cost & discount calculator */}
         <PriceCalculator />
-
-        {/* Interactive Factory Video Walkthrough tour */}
         <FactoryVideo />
-
-        {/* Dynamic Pagination Gallery with Skeleton shimmers */}
         <Gallery />
-
-        {/* Core USP Badges list */}
         <WhyUs />
-
-        {/* Active Purvanchal Delivery districts chip list */}
         <DeliveryMap />
-
-        {/* Regional Client Builders & Architects Reviews */}
         <Testimonials />
-
-        {/* Exclusive single-open FAQ interactive accords */}
         <FaqSection />
-
-        {/* Embedded physical Maps directions finder card */}
         <MapSection />
-
-        {/* Customized site specification estimate form */}
         <Contact />
       </main>
 
-      {/* Persistent Footer with clickable GPS Thumbnail navigation */}
       <Footer />
-
-      {/* WhatsApp exit-intent / 8-secs delay quote form popup modal */}
       <QuickEnquiryPopup />
-
-      {/* Floating Utilities */}
       <FloatingWhatsApp />
       <BackToTop />
     </div>

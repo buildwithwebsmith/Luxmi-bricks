@@ -1,15 +1,30 @@
 import React from "react";
-import { Facebook, Instagram, Youtube, Linkedin, MapPin, Phone, Mail, Navigation, MessageSquareCode, ArrowUpRight } from "lucide-react";
-import { COMPANY_INFO, NAV_LINKS } from "../lib/constants";
+import {
+  Facebook,
+  Instagram,
+  Youtube,
+  Linkedin,
+  MapPin,
+  Phone,
+  Mail,
+  Navigation,
+  MessageSquareCode,
+  ArrowUpRight
+} from "lucide-react";
+import { COMPANY_INFO, getLocalizedCompanyInfo } from "../lib/constants";
+import { useLanguage } from "../lib/language";
 import BrandLogo from "./BrandLogo";
 
 export default function Footer() {
+  const { language, content, isHindi } = useLanguage();
+  const company = getLocalizedCompanyInfo(language);
   const currentYear = new Date().getFullYear();
 
   const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     const id = href.slice(1);
     const element = document.getElementById(id);
+
     if (element) {
       const offset = 80;
       const elementPosition = element.getBoundingClientRect().top;
@@ -31,19 +46,21 @@ export default function Footer() {
                 variant="horizontalDark"
                 className="h-12 sm:h-14 w-auto"
               />
-              <span className="text-brick-light text-[10px] font-semibold tracking-wider block">
-                {COMPANY_INFO.hindiName} Â· ESTD. {COMPANY_INFO.established}
+              <span className={`text-brick-light text-[10px] font-semibold block ${isHindi ? "" : "tracking-wider uppercase"}`}>
+                {COMPANY_INFO.brandName} • {content.footer.establishedLabel} {COMPANY_INFO.established}
               </span>
             </div>
 
             <p className="text-stone-400 text-xs sm:text-sm leading-relaxed max-w-sm">
-              Luxmi Brick Field is eastern UP&apos;s trusted manufacturing center, baking Class-I Red Clay and eco-friendly Fly Ash structural blocks under national BIS standards.
+              {content.footer.blurb}
             </p>
 
             <div className="p-3 bg-stone-900/60 border border-stone-850 rounded-xl">
-              <span className="block text-[10px] font-mono uppercase tracking-widest text-stone-500">Motto</span>
+              <span className={`block text-[10px] text-stone-500 ${isHindi ? "font-medium" : "font-mono tracking-widest uppercase"}`}>
+                {content.footer.mottoLabel}
+              </span>
               <p className="text-xs font-semibold text-brick-light mt-1 font-display">
-                "{COMPANY_INFO.hindiTagline}"
+                {content.footer.mottoText}
               </p>
             </div>
 
@@ -53,7 +70,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2.5 rounded-md bg-stone-900 border border-stone-850 hover:border-brick-light text-stone-400 hover:text-white transition-all hover:bg-brick-primary"
-                aria-label="Facebook Page Link"
+                aria-label="Facebook"
               >
                 <Facebook className="w-4 h-4" />
               </a>
@@ -62,7 +79,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2.5 rounded-md bg-stone-900 border border-stone-850 hover:border-brick-light text-stone-400 hover:text-white transition-all hover:bg-brick-primary"
-                aria-label="Instagram Page Link"
+                aria-label="Instagram"
               >
                 <Instagram className="w-4 h-4" />
               </a>
@@ -71,7 +88,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2.5 rounded-md bg-stone-900 border border-stone-850 hover:border-brick-light text-stone-400 hover:text-white transition-all hover:bg-brick-primary"
-                aria-label="YouTube Channel Link"
+                aria-label="YouTube"
               >
                 <Youtube className="w-4 h-4" />
               </a>
@@ -80,7 +97,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2.5 rounded-md bg-stone-900 border border-stone-850 hover:border-brick-light text-stone-400 hover:text-white transition-all hover:bg-brick-primary"
-                aria-label="LinkedIn Corporate Profile Link"
+                aria-label="LinkedIn"
               >
                 <Linkedin className="w-4 h-4" />
               </a>
@@ -88,11 +105,11 @@ export default function Footer() {
           </div>
 
           <div className="lg:col-span-2 flex flex-col space-y-4">
-            <h4 className="text-white text-xs font-mono tracking-widest uppercase border-l-2 border-brick-primary pl-2.5">
-              Navigation
+            <h4 className={`text-white text-xs border-l-2 border-brick-primary pl-2.5 ${isHindi ? "font-semibold" : "font-mono tracking-widest uppercase"}`}>
+              {content.footer.linksTitle}
             </h4>
             <ul className="space-y-2">
-              {NAV_LINKS.map((link) => (
+              {content.navLinks.map((link) => (
                 <li key={link.href}>
                   <a
                     href={link.href}
@@ -107,13 +124,13 @@ export default function Footer() {
           </div>
 
           <div className="lg:col-span-3 flex flex-col space-y-4">
-            <h4 className="text-white text-xs font-mono tracking-widest uppercase border-l-2 border-brick-primary pl-2.5">
-              Interactive Map
+            <h4 className={`text-white text-xs border-l-2 border-brick-primary pl-2.5 ${isHindi ? "font-semibold" : "font-mono tracking-widest uppercase"}`}>
+              {content.footer.mapTitle}
             </h4>
 
             <div className="relative rounded-xl border border-stone-800 bg-stone-900 p-1 group overflow-hidden max-w-xs">
               <iframe
-                src={`${COMPANY_INFO.mapEmbedUrl}`}
+                src={COMPANY_INFO.mapEmbedUrl}
                 width="100%"
                 height="110"
                 style={{ border: 0 }}
@@ -121,35 +138,38 @@ export default function Footer() {
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 className="rounded-lg opacity-85 group-hover:opacity-100 transition-opacity"
+                title={content.footer.mapTitle}
               />
               <div className="absolute inset-0 bg-stone-950/20 group-hover:bg-transparent pointer-events-none transition-all" />
             </div>
 
             <a
-              href={`${COMPANY_INFO.directionLink}`}
+              href={COMPANY_INFO.directionLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 w-full max-w-xs text-xs font-bold uppercase tracking-wider bg-stone-900 hover:bg-brick-primary text-white py-2.5 px-4 rounded-lg border border-stone-800 hover:border-brick-primary transition-all duration-200 shadow-sm"
+              className={`inline-flex items-center justify-center gap-2 w-full max-w-xs text-xs font-bold bg-stone-900 hover:bg-brick-primary text-white py-2.5 px-4 rounded-lg border border-stone-800 hover:border-brick-primary transition-all duration-200 shadow-sm ${
+                isHindi ? "" : "tracking-wider uppercase"
+              }`}
               id="get-directions-action"
             >
               <Navigation className="w-3.5 h-3.5" />
-              Get GPS Directions
+              {content.footer.directionsCta}
               <ArrowUpRight className="w-3 h-3 text-stone-400" />
             </a>
           </div>
 
           <div className="lg:col-span-3 flex flex-col space-y-4">
-            <h4 className="text-white text-xs font-mono tracking-widest uppercase border-l-2 border-brick-primary pl-2.5">
-              Bhatta Office
+            <h4 className={`text-white text-xs border-l-2 border-brick-primary pl-2.5 ${isHindi ? "font-semibold" : "font-mono tracking-widest uppercase"}`}>
+              {content.footer.officeTitle}
             </h4>
 
             <ul className="space-y-3.5 text-xs sm:text-sm text-stone-400">
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 mt-0.5 text-brick-light flex-shrink-0" />
                 <span className="leading-relaxed">
-                  {COMPANY_INFO.address}
-                  <span className="block mt-1 font-semibold text-stone-500 text-[10px] uppercase font-mono">
-                    ðŸ“ Near Jhusi Station
+                  {company.address}
+                  <span className={`block mt-1 text-[10px] text-stone-500 ${isHindi ? "font-medium" : "font-mono"}`}>
+                    {company.landmark}
                   </span>
                 </span>
               </li>
@@ -171,17 +191,20 @@ export default function Footer() {
               <div className="p-3.5 rounded-xl bg-stone-900 border border-stone-850 flex items-start gap-3 max-w-xs">
                 <MessageSquareCode className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h5 className="text-[10px] font-mono text-stone-300 uppercase tracking-widest font-bold">WhatsApp Support</h5>
+                  <h5 className={`text-[10px] text-stone-300 font-bold ${isHindi ? "font-medium" : "font-mono tracking-widest uppercase"}`}>
+                    {content.footer.whatsappTitle}
+                  </h5>
                   <p className="text-[11px] text-stone-500 mt-0.5 leading-tight">
-                    Start a direct chat with our dispatch desk on {COMPANY_INFO.whatsapp}.
+                    {content.footer.whatsappBody}
                   </p>
                   <a
-                    href={`${COMPANY_INFO.whatsappLink}`}
+                    href={COMPANY_INFO.whatsappLink}
                     target="_blank"
-                    className="inline-block text-[10px] text-emerald-400 hover:text-emerald-300 font-bold uppercase mt-2 hover:underline"
+                    rel="noopener noreferrer"
                     referrerPolicy="no-referrer"
+                    className="inline-block text-[10px] text-emerald-400 hover:text-emerald-300 font-bold mt-2 hover:underline"
                   >
-                    Start Chat &rarr;
+                    {content.footer.whatsappCta} →
                   </a>
                 </div>
               </div>
@@ -194,10 +217,10 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center md:flex md:items-center md:justify-between text-[11px] text-stone-500">
         <p>
-          &copy; {currentYear} {COMPANY_INFO.name}. All rights reserved. Managed under national BIS manufacturing frameworks and GST accounting regulations.
+          &copy; {currentYear} {COMPANY_INFO.brandName}. {content.footer.copyright}
         </p>
-        <p className="flex items-center justify-center gap-1.5 mt-2 md:mt-0 font-semibold text-stone-400">
-          Crafted in Prayagraj
+        <p className="mt-2 md:mt-0 font-semibold text-stone-400">
+          {isHindi ? `${company.location} से सेवा में` : `Serving from ${company.location}`}
         </p>
       </div>
     </footer>
