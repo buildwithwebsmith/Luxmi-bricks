@@ -18,7 +18,12 @@ interface LeadSubmissionPayload {
 
 const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
 const WEB3FORMS_FROM_NAME = "Luxmi Bricks Website";
-const WEB3FORMS_PRIMARY_ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_PRIMARY_ACCESS_KEY?.trim() ?? "";
+// Web3Forms access keys are intended for client-side form submissions.
+// Keep a committed fallback so static production deployments still work
+// when hosting env vars are missing or not wired into the build.
+const DEFAULT_WEB3FORMS_PRIMARY_ACCESS_KEY = "455ae0f5-84ac-4e52-b2d8-9f058fc24ee0";
+const WEB3FORMS_PRIMARY_ACCESS_KEY =
+  import.meta.env.VITE_WEB3FORMS_PRIMARY_ACCESS_KEY?.trim() || DEFAULT_WEB3FORMS_PRIMARY_ACCESS_KEY;
 const WEB3FORMS_SECONDARY_ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_SECONDARY_ACCESS_KEY?.trim() ?? "";
 const WEB3FORMS_SECONDARY_EMAIL = "shubhammahapure55@gmail.com";
 
