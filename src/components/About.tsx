@@ -94,12 +94,13 @@ export default function About() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {content.about.stats.map((stat) => (
-                <StatCounter
-                  key={stat.label}
-                  target={stat.value}
-                  suffix={stat.suffix}
-                  label={stat.label}
-                />
+                <React.Fragment key={stat.label}>
+                  <StatCounter
+                    target={stat.value}
+                    suffix={stat.suffix}
+                    label={stat.label}
+                  />
+                </React.Fragment>
               ))}
             </div>
           </motion.div>

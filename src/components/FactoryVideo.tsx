@@ -1,40 +1,34 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Film, Play } from "lucide-react";
 import { useLanguage } from "../lib/language";
 import { SITE_MEDIA } from "../lib/media";
 
 export default function FactoryVideo() {
   const { content, isHindi } = useLanguage();
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const iframeVideoMarkup = `<!DOCTYPE html>
-<html lang="${isHindi ? "hi" : "en"}">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style>
-      html, body {
-        margin: 0;
-        width: 100%;
-        height: 100%;
-        background: #0c0a09;
-        overflow: hidden;
-      }
-      video {
-        width: 100%;
-        height: 100%;
-        display: block;
-        object-fit: cover;
-        background: #0c0a09;
-      }
-    </style>
-  </head>
-  <body>
-    <video controls autoplay playsinline preload="metadata">
-      <source src="${SITE_MEDIA.factoryVideoSrc}" type="video/mp4" />
-    </video>
-  </body>
-</html>`;
+  const handlePlay = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    setHasStarted(true);
+
+    try {
+      await video.play();
+    } catch {
+      video.controls = true;
+    }
+  };
+
+  const handleEnded = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = 0;
+    }
+
+    setHasStarted(false);
+  };
 
   return (
     <section className="py-24 bg-stone-950 text-white relative border-b border-stone-900" id="factory-video">
@@ -55,23 +49,23 @@ export default function FactoryVideo() {
           </p>
         </div>
 
-        <div className="max-w-3xl mx-auto relative rounded-2xl overflow-hidden shadow-2xl border-2 border-stone-800 bg-stone-900 aspect-video">
-          {isPlaying ? (
-            <iframe
-              title={content.factoryVideo.title}
-              srcDoc={iframeVideoMarkup}
-              className="absolute inset-0 w-full h-full border-0 bg-stone-950"
-              allow="autoplay; fullscreen; picture-in-picture"
-            />
-          ) : (
-            <div className="absolute inset-0">
-              <img
-                src={SITE_MEDIA.factoryVideoPoster}
-                alt={content.factoryVideo.title}
-                className="absolute inset-0 w-full h-full object-cover"
-                loading="lazy"
-              />
+        <div className="max-w-3xl mx-auto relative rounded-2xl overflow-hidden shadow-2xl border-2 border-stone-800 bg-stone-900 aspect-[4/5] sm:aspect-video">
+          <video
+            ref={videoRef}
+            title={content.factoryVideo.title}
+            poster={SITE_MEDIA.factoryVideoPoster}
+            controls={hasStarted}
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-contain bg-stone-950"
+            onPlay={() => setHasStarted(true)}
+            onEnded={handleEnded}
+          >
+            <source src={SITE_MEDIA.factoryVideoSrc} type="video/mp4" />
+          </video>
 
+          {!hasStarted && (
+            <div className="absolute inset-0">
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/45 to-transparent" />
 
               <div className={`absolute top-4 left-4 bg-stone-900/90 border border-stone-800 backdrop-blur px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-semibold text-stone-200 ${
@@ -84,7 +78,7 @@ export default function FactoryVideo() {
               <div className="absolute inset-0 flex items-center justify-center px-4">
                 <button
                   type="button"
-                  onClick={() => setIsPlaying(true)}
+                  onClick={handlePlay}
                   className="w-20 h-20 bg-brick-primary hover:bg-brick-light text-white rounded-full flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 shadow-orange-600/30"
                   aria-label={content.factoryVideo.playHint}
                 >

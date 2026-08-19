@@ -95,22 +95,24 @@ export default function Contact() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const botcheckValue = (new FormData(e.currentTarget).get("botcheck") ?? "").toString();
     setIsLoading(true);
     setErrorMessage("");
 
     try {
       const result = await submitLeadForm({
         formType: content.contact.formTitle,
-        subject: `${content.contact.title} - ${selectedProduct.name}`,
+        subject: `New Lead - Luxmi Bricks - Direct Enquiry - ${selectedProduct.name} - ${formData.fullName.trim()}`,
         replyTo: formData.email,
-        fields: {
-          [content.contact.fields.name]: formData.fullName,
-          [content.contact.fields.phone]: formData.phone,
-          [content.contact.fields.email]: formData.email,
-          [content.contact.fields.city]: formData.city,
-          [content.contact.fields.product]: selectedProduct.name,
-          [content.contact.fields.message]: formData.message
-        }
+        botcheck: botcheckValue,
+        fields: [
+          { key: "Customer Name", label: content.contact.fields.name, value: formData.fullName },
+          { key: "Phone Number", label: content.contact.fields.phone, value: formData.phone },
+          { key: "Email Address", label: content.contact.fields.email, value: formData.email },
+          { key: "Delivery City / District", label: content.contact.fields.city, value: formData.city },
+          { key: "Brick Product", label: content.contact.fields.product, value: selectedProduct.name },
+          { key: "Requirement Details", label: content.contact.fields.message, value: formData.message }
+        ]
       });
 
       setSubmissionMode(result);
@@ -189,6 +191,15 @@ export default function Contact() {
                     exit={{ opacity: 0 }}
                     id="brick-enquiry-form"
                   >
+                    <input
+                      type="checkbox"
+                      name="botcheck"
+                      tabIndex={-1}
+                      autoComplete="off"
+                      className="hidden"
+                      style={{ display: "none" }}
+                    />
+
                     {errorMessage && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />

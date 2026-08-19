@@ -2,9 +2,9 @@ import brickWorkersCartImage from "../../assets/site-media/brick-workers-cart.jp
 import brickYardKilnImage from "../../assets/site-media/brick-yard-kiln.jpg";
 import greyBrickYardImage from "../../assets/site-media/grey-brick-yard.jpg";
 import hollowBlockYardImage from "../../assets/site-media/hollow-block-yard.jpg";
-import redBrickStackImage from "../../assets/site-media/red-brick-stack.jpg";
+import redBrickStackImage from "../../assets/site-media/red-brick-stack-pro.jpg";
 import redBrickWallImage from "../../assets/site-media/red-brick-wall.jpg";
-import rusticBrickWallImage from "../../assets/site-media/rustic-brick-wall.jpg";
+import rusticBrickWallImage from "../../assets/site-media/exposed-face-bricks-pro.jpg";
 import wireCutBricksImage from "../../assets/site-media/wire-cut-bricks.jpg";
 import luxmiBricksVideo from "../../assets/Luxmi Bricks.mp4";
 

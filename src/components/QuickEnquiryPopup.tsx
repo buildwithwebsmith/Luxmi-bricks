@@ -76,6 +76,7 @@ export default function QuickEnquiryPopup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const botcheckValue = (new FormData(e.currentTarget as HTMLFormElement).get("botcheck") ?? "").toString();
 
     if (!name.trim()) {
       setValidationError(content.quickEnquiry.nameError);
@@ -93,15 +94,16 @@ export default function QuickEnquiryPopup() {
     try {
       const result = await submitLeadForm({
         formType: content.quickEnquiry.title,
-        subject: `${content.quickEnquiry.title} - ${selectedProduct.name}`,
+        subject: `New Lead - Luxmi Bricks - Quick Quote - ${selectedProduct.name} - ${name.trim() || "Customer"}`,
         replyTo: email,
-        fields: {
-          [content.quickEnquiry.fields.name]: name,
-          [content.quickEnquiry.fields.phone]: phone,
-          [content.quickEnquiry.fields.email]: email,
-          [content.quickEnquiry.fields.product]: selectedProduct.name,
-          [content.quickEnquiry.fields.quantity]: selectedQuantity
-        }
+        botcheck: botcheckValue,
+        fields: [
+          { key: "Customer Name", label: content.quickEnquiry.fields.name, value: name },
+          { key: "WhatsApp Number", label: content.quickEnquiry.fields.phone, value: phone },
+          { key: "Email Address", label: content.quickEnquiry.fields.email, value: email },
+          { key: "Brick Product", label: content.quickEnquiry.fields.product, value: selectedProduct.name },
+          { key: "Requested Quantity", label: content.quickEnquiry.fields.quantity, value: selectedQuantity }
+        ]
       });
 
       setSubmissionMode(result);
@@ -156,6 +158,15 @@ export default function QuickEnquiryPopup() {
 
         {!isSuccess ? (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <input
+              type="checkbox"
+              name="botcheck"
+              tabIndex={-1}
+              autoComplete="off"
+              className="hidden"
+              style={{ display: "none" }}
+            />
+
             {validationError && (
               <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-lg text-xs text-red-300 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
